@@ -17,4 +17,7 @@
 library("usethis")
 
 usethis::use_git()
+usethis::create_github_token()
 usethis::use_github()
+
+usethis::use_readme_rmd()
