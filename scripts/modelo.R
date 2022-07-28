@@ -18,6 +18,10 @@ library("usethis")
 
 usethis::use_git()
 usethis::create_github_token()
-usethis::use_github()
+usethis::use_github(private = TRUE)
 
 usethis::use_readme_rmd()
+
+
+#Licença
+usethis::use_mit_license()

@@ -3,6 +3,8 @@
 
 # Emershow
 
+**ESTE REPOSITORIO É UM TUTORIAL.**
+
 <!-- badges: start -->
 <!-- badges: end -->
 
@@ -10,5 +12,3 @@
 
 A verdadeira formula do momento é
 ![p = mv](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;p%20%3D%20mv "p = mv").
-
-**Alterei no github**
