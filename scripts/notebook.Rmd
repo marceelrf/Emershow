@@ -1,0 +1,24 @@
+---
+title: "Notebook do projeto do morcegão"
+author:
+- Emerson
+- Marcel
+- Matheus
+output:
+  html_document:
+    df_print: paged
+bibliography: references.bib
+---
+
+## Resumo
+
+ESTE É UM RESUMO
+
+## Introdução
+
+ESTA É UMA INTRODUÇÃO[@da2021]
+
+$$p2 = \frac{m}{v}$$
+
+
+## Referencias
