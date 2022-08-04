@@ -1,0 +1,124 @@
+---
+title: "Notebook do projeto do morcegão"
+author:
+- Emerson
+- Marcel
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Pacotes
+
+```{r pacotes}
+library(tidyverse)
+library(Biobase)
+library(limma)
+```
+
+## Meta
+
+$$nrow(expMat) == nrow(adf)\\ncol(expMat) == nrow(sdrf)$$
+- `expMat` é uma matriz!  
+- `adf` é um data.frame anotado!  
+- `sdrf` é um data.frame anotado!
+
+## Importar dados
+
+### Matriz de expressão (expMat)
+```{r}
+sample_files <- list.files(path = "data/",pattern = "sample",full.names = T)
+
+sample_list <- list() #criar uma lista vazia
+
+for (i in 1:length(sample_files)) { #importar dados
+  
+  sample_list[[i]] <- read_tsv(file = sample_files[i])
+    
+  print(length(sample_list))
+}
+
+```
+
+```{r}
+#Nomear os elementos
+
+sample_files#ver nomes
+
+#remove os caracteres indesejados
+tmp1 <- str_replace(string = sample_files,pattern = "data/",replacement = "")
+tmp2 <- str_replace(string = tmp1,pattern = "_sample_table.txt",replacement = "")
+#gsub()
+
+#Passar o tmp2 para os nomes da lista
+
+names(sample_list) <- tmp2
+
+```
+
+### Descrição de amostras
+
+```{r importante}
+sdrf <- read_tsv(file = "data/E-GEOD-68913.sdrf.txt")
+
+sdrf <- sdrf %>% 
+  mutate(NomesDados = str_replace(string = `Source Name`,pattern = " 1",replacement = "")) %>% 
+  dplyr::select(NomesDados,Source = "Comment [Sample_source_name]",Disease = "Characteristics [disease status]") %>% 
+  arrange(NomesDados)
+```
+
+### Descrição de amostras
+
+```{r}
+adf <- read_tsv(file = "data/A-GEOD-16384.adf.txt",skip = 15)
+
+
+adf <- adf %>% 
+  filter(str_detect(string = `Reporter Database Entry [mirbase]`,pattern = "rno")) %>% 
+  select(Rep = "Reporter Name", mirbase = `Reporter Database Entry [mirbase]`)
+```
+
+
+## Arrumar os dados
+
+### Criar um unica tabela
+
+```{r}
+expTab <- sample_list %>% 
+  purrr::reduce(left_join,by = "ID_REF") # junta todas as tabela em uma só baseada na colunas ID_REF
+
+
+colnames(expTab)[2:13] <- names(sample_list) # Arruma os nomes de colunas
+
+class(expTab) #retorna a classe do objeto
+
+expMat <- expTab %>% 
+  dplyr::filter(ID_REF %in% adf$Rep) %>% 
+  column_to_rownames(var = "ID_REF") %>% 
+  as.matrix() # Converte para matriz
+
+ncol(expMat) == nrow(sdrf)
+nrow(adf) == nrow(expMat)
+(colnames(expMat) == sdrf$NomesDados) 
+```
+
+## Criar eset
+
+```{r}
+rownames(adf) <- adf$Rep
+row.names(sdrf) <- sdrf$NomesDados
+
+
+adf_final <- Biobase::AnnotatedDataFrame(adf)
+sdrf_final <- Biobase::AnnotatedDataFrame(sdrf)
+
+#Criar o conjunto de expressão
+eset <- ExpressionSet(assayData = expMat,
+                      phenoData = sdrf_final,
+                      featureData = adf_final)
+
+#eset é um objeto do S4 - programação orientada a objetos
+# O R padrão é S3 - programação funcional
+```
+
