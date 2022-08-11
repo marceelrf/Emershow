@@ -84,6 +84,8 @@ adf <- adf %>%
 
 ### Criar um unica tabela
 
+
+
 ```{r}
 expTab <- sample_list %>% 
   purrr::reduce(left_join,by = "ID_REF") # junta todas as tabela em uma só baseada na colunas ID_REF
@@ -120,5 +122,122 @@ eset <- ExpressionSet(assayData = expMat,
 
 #eset é um objeto do S4 - programação orientada a objetos
 # O R padrão é S3 - programação funcional
+```
+
+## LIMMA  
+
+Modelo linear para os fatores que influenciam na expressão gênica/transcritos/mirna/etc.
+
+$$f(x) = Par_1 + Par_2 + ...$$
+
+
+$$Exp_{gene} = Source + Disease$$
+
+$$Exp_{gene} = \beta0 + \beta1 Source + \beta2 Disease + \epsilon$$
+
+
+### Densidades
+
+```{r}
+plotDensities(eset,legend = F)
+```
+
+aplicar log10
+
+```{r}
+# exprs(eset) #extrai a matriz de expressão
+# pData(eset) #extrai os dados das amostras
+# fData(eset) #extrai os parametros dos mirna
+
+eset_log <- eset
+
+min(exprs(eset_log))
+
+#USAR QUANDO TIVER NUMERO NEGATIVO
+exprs(eset_log) <- log10(exprs(eset) + abs(min(exprs(eset_log)))) #Abs = módulo
+
+#USAR log(x+1) quando tiver inteiros 0,1,2,3,..
+
+
+#replotar as densidades
+plotDensities(eset_log,legend = F)
+```
+
+Escala normal
+$$x = 0$$
+Transformar para escala log
+$$y = log(x+1)\\y= log(1)\\y=0$$
+
+Difença entre escalas
+-1000 e 100
+$$1000-100 = 900$$
+$$log_{10}(1000) - log_{10}(100)\\
+3-2\\
+1$$
+
+### Normalizar
+
+```{r}
+eset_log_norm <- eset_log
+
+exprs(eset_log_norm) <- normalizeBetweenArrays(exprs(eset_log),
+                                               method = "quantile")
+
+exprs(eset) <- normalizeBetweenArrays(exprs(eset),
+                                      method = "quantile")
+
+plotDensities(eset,legend = F)
+```
+
+### Expressão diferencial
+
+```{r}
+pData(eset)
+
+(design <- model.matrix(~ 0 + factor(pData(eset)$Source) + factor(pData(eset)$Disease)))
+
+(colnames(design) <- c("mv","vsm",
+                       "normal"))
+
+design
+# model.matrix(~0 + Source * Disease, data = pData(eset))
+fit <- lmFit(exprs(eset),
+             design)
+
+cm <- makeContrasts(Source = "mv - vsm",
+                   levels = design)
+
+
+fit2 <- contrasts.fit(fit, cm)
+fit2 <- eBayes(fit2)
+
+topTable(fit2,
+         coef = 1,#o primeiro contraste avaliado
+         adjust.method = "BH",#Benjamin hocheback - Falsos positivos corrigidos
+         number = 10 #numero de linhas para serem exibidas
+         )
+```
+
+### Volcano plot
+
+$$|log_2{FC}| > 1 \\|FC|>2$$
+
+$$-log_{10}{adjPval} > 2\\
+adjPval < 10^{-2}\\adjPval <0.01$$
+
+```{r}
+res <- topTable(fit2,
+         coef = 1,#o primeiro contraste avaliado
+         adjust.method = "BH",#Benjamin hocheback - Falsos positivos corrigidos
+         number = Inf #numero de linhas para serem exibidas
+         )
+
+#Volcano plot - log2FC
+res %>% 
+  ggplot(aes(x = logFC, y = -log10(adj.P.Val))) +
+  geom_point() +
+  geom_vline(xintercept = c(-1,1)) +
+  geom_hline(yintercept = 2) +
+  labs(title = "Expressao diferencial - Volcano plot")
 ```
 
