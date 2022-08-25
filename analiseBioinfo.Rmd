@@ -15,6 +15,10 @@ output:
 library(tidyverse)
 library(Biobase)
 library(limma)
+library(AnnotationDbi)
+library(clusterProfiler)
+library(org.Rn.eg.db)
+
 ```
 
 ## Meta
@@ -194,23 +198,30 @@ plotDensities(eset,legend = F)
 ```{r}
 pData(eset)
 
-(design <- model.matrix(~ 0 + factor(pData(eset)$Source) + factor(pData(eset)$Disease)))
+(design <- model.matrix(~ 0 + factor(pData(eset)$Source) : factor(pData(eset)$Disease)))
 
-(colnames(design) <- c("mv","vsm",
-                       "normal"))
+(colnames(design) <- c("mv_CKD","vsm_CKD",
+                       "mv_normal","vsm_normal"))
 
 design
 # model.matrix(~0 + Source * Disease, data = pData(eset))
 fit <- lmFit(exprs(eset),
              design)
 
-cm <- makeContrasts(Source = "mv - vsm",
-                   levels = design)
+cm <- makeContrasts(b1 = "mv_CKD + vsm_CKD - mv_normal - vsm_normal", #Doença
+                    b2 = "mv_CKD + mv_normal - vsm_CKD - vsm_normal", #Fonte
+                    b3 = "mv_normal - vsm_normal", #Fonte - comparando normal
+                    b4 = "vsm_normal - vsm_CKD", #Doença - comparando nas VSM
+                    levels = design)
 
 
 fit2 <- contrasts.fit(fit, cm)
 fit2 <- eBayes(fit2)
 
+#10 primeiras linhas dos coeficientes
+fit2$coefficients[1:10,]
+
+#Para o coeficiente 1, ou seja, efeito da doença na expressão de miRNA
 topTable(fit2,
          coef = 1,#o primeiro contraste avaliado
          adjust.method = "BH",#Benjamin hocheback - Falsos positivos corrigidos
@@ -225,6 +236,8 @@ $$|log_2{FC}| > 1 \\|FC|>2$$
 $$-log_{10}{adjPval} > 2\\
 adjPval < 10^{-2}\\adjPval <0.01$$
 
+**Organizar o res (renomear) e rodar para o coef 2**
+
 ```{r}
 res <- topTable(fit2,
          coef = 1,#o primeiro contraste avaliado
@@ -234,10 +247,34 @@ res <- topTable(fit2,
 
 #Volcano plot - log2FC
 res %>% 
-  ggplot(aes(x = logFC, y = -log10(adj.P.Val))) +
+  rownames_to_column(var = "miRNA") %>% 
+  mutate(Cond = case_when(logFC > 1 & adj.P.Val < 0.01 ~ "Up",
+                          logFC < -1 & adj.P.Val < 0.01 ~ "Down",
+                          TRUE ~ "Not Sig")) %>%  #cria uma coluna
+  ggplot(aes(x = logFC, y = -log10(adj.P.Val),color = Cond,label = miRNA)) +
   geom_point() +
-  geom_vline(xintercept = c(-1,1)) +
-  geom_hline(yintercept = 2) +
-  labs(title = "Expressao diferencial - Volcano plot")
+  # geom_vline(xintercept = c(-1,1)) +
+  # geom_hline(yintercept = 2) +
+  labs(title = "Expressao diferencial - Volcano plot B1") +
+  scale_color_manual(values = c("blue","black","red"))
+
+#plotly::ggplotly()
 ```
 
+Extrair os miRNA diferencialmente regulados
+
+```{r}
+res %>% 
+  rownames_to_column(var = "miRNA") %>% 
+  mutate(Cond = case_when(logFC > 1 & adj.P.Val < 0.01 ~ "Up",
+                          logFC < -1 & adj.P.Val < 0.01 ~ "Down",
+                          TRUE ~ "Not Sig")) %>% 
+  filter(Cond != "Not Sig") %>% 
+  select(miRNA, logFC,adj.P.Val,Cond)#Opcional
+```
+
+## Enriquecimento funcional(EF)
+
+Para analise de EF de miRNAs usamos seus alvos.
+
+**Gerar os targets dos miRNAs com multiMir e então rodar o enriquecimento**
