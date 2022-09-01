@@ -18,10 +18,15 @@ library(limma)
 library(AnnotationDbi)
 library(clusterProfiler)
 library(org.Rn.eg.db)
-
+library(multiMiR)
 ```
 
+## Objetivo
+
+Encontrar miRNAs para validar com dados da Georgia.
+
 ## Meta
+
 
 $$nrow(expMat) == nrow(adf)\\ncol(expMat) == nrow(sdrf)$$
 - `expMat` é uma matriz!  
@@ -206,7 +211,7 @@ pData(eset)
 design
 # model.matrix(~0 + Source * Disease, data = pData(eset))
 fit <- lmFit(exprs(eset),
-             design)
+            design)
 
 cm <- makeContrasts(b1 = "mv_CKD + vsm_CKD - mv_normal - vsm_normal", #Doença
                     b2 = "mv_CKD + mv_normal - vsm_CKD - vsm_normal", #Fonte
@@ -278,3 +283,80 @@ res %>%
 Para analise de EF de miRNAs usamos seus alvos.
 
 **Gerar os targets dos miRNAs com multiMir e então rodar o enriquecimento**
+
+```{r}
+mirs <- res %>% 
+  rownames_to_column(var = "miRNA") %>% 
+  mutate(Cond = case_when(logFC > 1 & adj.P.Val < 0.01 ~ "Up",
+                          logFC < -1 & adj.P.Val < 0.01 ~ "Down",
+                          TRUE ~ "Not Sig")) %>% 
+  filter(Cond != "Not Sig") %>% 
+  pull(miRNA)
+
+str_replace(string = mirs,
+            pattern = "-star_st|_st",
+            replacement = "")
+
+res_target <- get_multimir(org = "rno",
+             mirna = str_replace(string = mirs,
+            pattern = "-star_st|_st",
+            replacement = ""),
+             table = "predicted",
+             limit = 50)
+res_target@data
+
+library(miRNAtap)
+library(miRNAtap.db)
+g2Predicts <- function(x, db = c('pictar','diana','targetscan','miranda','mirdb'), spc = "rno" ){
+  tab <- NULL
+  miRNA_targets <- NULL
+  for(i in 1:length(x)){
+    target <- getPredictedTargets(x[i], sources = db, both_strands = TRUE,species = spc)
+    if(is.null(target[i])){
+      dat <- data.frame(miRNA = x[i], targetID = NA, Database = "Targetscan, Pictar")
+    } else dat<- data.frame(miRNA = x[i], targetID = rownames(target), Database = "Targetscan, Pictar")
+    tab <- rbind(tab, dat)
+  }
+  return(tab)
+}
+
+
+tmpmirs <- g2Predicts(x = str_replace(string = mirs,
+            pattern = "-star_st|_st",
+            replacement = ""))
+
+tmpmirs %>% 
+  group_by(miRNA) %>% 
+  count()
+```
+
+#### Trocar anotações
+
+```{r}
+rno <- org.Rn.eg.db
+targets_id <- AnnotationDbi::select(x= rno, 
+                     keys = unique(tmpmirs$targetID),
+                     columns = c("SYMBOL","ENTREZID"),
+                     keytype = "ENTREZID")
+
+targets_id$SYMBOL
+
+```
+
+#### KEGG pathways 
+
+```{r}
+targets_id_NA <- targets_id %>% 
+  filter(!is.na(ENTREZID)) %>% 
+  distinct()
+
+kegg <- enrichKEGG(gene = (targets_id_NA$ENTREZID),
+                   organism     = "rno",
+                   #nPerm        = 1000,
+                   minGSSize    = 3,
+                   maxGSSize    = 800,
+                   pvalueCutoff = 0.05,
+                   pAdjustMethod = "BH", ##no p-value correction or BH
+                   keyType       = "ncbi-geneid")
+```
+
