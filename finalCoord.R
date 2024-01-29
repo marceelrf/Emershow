@@ -9,6 +9,10 @@ deg_mirnas <- list.files(path = "output/OutPut/Count_Alvos/",full.names = T) %>%
   map(\(x) x %>% dplyr::select(miRNA)) %>% 
   map(\(x) pull(x))
 
+(nm <- paste0("B",c(1,2,3,5,6)))
+(nm_files <- paste0(nm,".txt"))
+
+walk2(.x = deg_mirnas,.y= nm_files,.f = ~write_lines(x = .x,file = .y))
 
 unique(flatten_chr(deg_mirnas))
 
