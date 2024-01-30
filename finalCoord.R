@@ -38,67 +38,67 @@ GTF_filtrado %>%
   # View()
 
 
-# Ler o arquivo GFF
-dados <- readLines("rno_DEmiRs.gff")
-
-# Inicializar uma lista para armazenar os dados
-lista_dados <- list()
-
-# Identificar o número máximo de atributos
-max_atributos <- 0
-
-# Loop sobre cada linha do arquivo GFF
-for (linha in dados) {
-  # Dividir a linha em campos usando o separador de tabulação
-  campos <- unlist(strsplit(linha, "\t"))
-  
-  # Extrair a coluna de atributos
-  atributos <- campos[9]
-  
-  # Dividir os atributos em pares chave-valor
-  pares <- strsplit(atributos, ";")[[1]]
-  
-  # Inicializar um vetor para armazenar os pares chave-valor
-  atributos_dict <- list()
-  
-  # Loop sobre cada par chave-valor e extrair informações
-  for (par in pares) {
-    # Dividir o par em chave e valor
-    chave_valor <- strsplit(par, "=")[[1]]
-    
-    # Se houver chave e valor, armazená-los no dicionário
-    if (length(chave_valor) == 2) {
-      chave <- chave_valor[1]
-      valor <- chave_valor[2]
-      atributos_dict[[chave]] <- valor
-    }
-  }
-  
-  # Atualizar o número máximo de atributos, se necessário
-  num_atributos <- length(atributos_dict)
-  if (num_atributos > max_atributos) {
-    max_atributos <- num_atributos
-  }
-  
-  # Adicionar o dicionário de atributos à lista de dados
-  lista_dados <- c(lista_dados, list(atributos_dict))
-}
-
-# Preencher observações com menos atributos
-for (i in seq_along(lista_dados)) {
-  num_atributos <- length(lista_dados[[i]])
-  if (num_atributos < max_atributos) {
-    diff <- max_atributos - num_atributos
-    for (j in 1:diff) {
-      lista_dados[[i]][[paste0("Missing_", j)]] <- NA
-    }
-  }
-}
-
-# map(lista_dados, \(x) names(x) = c("ID","Alias","Name","DeriveFrom"))
-# Converter a lista de listas em um data frame
-df <- do.call(rbind, lapply(map(lista_dados, \(x) names(x) = c("ID","Alias","Name","DeriveFrom")),
-                            function(x) as.data.frame(t(x))))
-
-# Exibir o data frame
-print(df)
+# # Ler o arquivo GFF
+# dados <- readLines("rno_DEmiRs.gff")
+# 
+# # Inicializar uma lista para armazenar os dados
+# lista_dados <- list()
+# 
+# # Identificar o número máximo de atributos
+# max_atributos <- 0
+# 
+# # Loop sobre cada linha do arquivo GFF
+# for (linha in dados) {
+#   # Dividir a linha em campos usando o separador de tabulação
+#   campos <- unlist(strsplit(linha, "\t"))
+#   
+#   # Extrair a coluna de atributos
+#   atributos <- campos[9]
+#   
+#   # Dividir os atributos em pares chave-valor
+#   pares <- strsplit(atributos, ";")[[1]]
+#   
+#   # Inicializar um vetor para armazenar os pares chave-valor
+#   atributos_dict <- list()
+#   
+#   # Loop sobre cada par chave-valor e extrair informações
+#   for (par in pares) {
+#     # Dividir o par em chave e valor
+#     chave_valor <- strsplit(par, "=")[[1]]
+#     
+#     # Se houver chave e valor, armazená-los no dicionário
+#     if (length(chave_valor) == 2) {
+#       chave <- chave_valor[1]
+#       valor <- chave_valor[2]
+#       atributos_dict[[chave]] <- valor
+#     }
+#   }
+#   
+#   # Atualizar o número máximo de atributos, se necessário
+#   num_atributos <- length(atributos_dict)
+#   if (num_atributos > max_atributos) {
+#     max_atributos <- num_atributos
+#   }
+#   
+#   # Adicionar o dicionário de atributos à lista de dados
+#   lista_dados <- c(lista_dados, list(atributos_dict))
+# }
+# 
+# # Preencher observações com menos atributos
+# for (i in seq_along(lista_dados)) {
+#   num_atributos <- length(lista_dados[[i]])
+#   if (num_atributos < max_atributos) {
+#     diff <- max_atributos - num_atributos
+#     for (j in 1:diff) {
+#       lista_dados[[i]][[paste0("Missing_", j)]] <- NA
+#     }
+#   }
+# }
+# 
+# # map(lista_dados, \(x) names(x) = c("ID","Alias","Name","DeriveFrom"))
+# # Converter a lista de listas em um data frame
+# df <- do.call(rbind, lapply(map(lista_dados, \(x) names(x) = c("ID","Alias","Name","DeriveFrom")),
+#                             function(x) as.data.frame(t(x))))
+# 
+# # Exibir o data frame
+# print(df)
